@@ -12,28 +12,28 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 
-The frontend is built using React with TypeScript and follows a modern component-based architecture:
+The frontend uses server-side rendered HTML templates with modern styling and JavaScript:
 
-- **UI Framework**: React with TypeScript, utilizing Wouter for routing instead of React Router for a lightweight solution
-- **State Management**: TanStack Query (React Query) for server state management and data fetching with built-in caching and real-time updates
-- **Styling**: Tailwind CSS with custom CSS variables for theming, using shadcn/ui component library for consistent design system
-- **Build Tool**: Vite for fast development and optimized production builds
-- **Component Structure**: Modular components organized by feature (alerts, devices, network tools, charts, etc.)
+- **Template Engine**: Jinja2 templates with HTML5 and responsive design
+- **Styling**: Tailwind CSS with custom CSS variables for dark theme, Lucide icons for consistent iconography
+- **Charts**: Chart.js for real-time data visualization and network statistics
+- **Real-time Updates**: JavaScript fetch API with auto-refresh for live dashboard updates
+- **Responsive Design**: Mobile-first approach with grid layouts and responsive components
 
-The frontend architecture emphasizes real-time updates through WebSocket connections and provides responsive design with mobile support.
+The frontend provides the same layout and functionality as the original React version but with simpler server-side rendering.
 
 ### Backend Architecture
 
-The backend follows an Express.js REST API pattern with WebSocket support:
+The backend is built with Python Flask for simplicity and reliability:
 
-- **Runtime**: Node.js with TypeScript and ESM modules
-- **Web Framework**: Express.js for HTTP API endpoints
-- **Real-time Communication**: WebSocket Server for live updates and notifications
-- **Data Layer**: Drizzle ORM with PostgreSQL for type-safe database operations
-- **Service Layer**: Dedicated services for network tools (ping, traceroute, port scanning) using system commands
-- **Storage Pattern**: Interface-based storage abstraction with both in-memory and database implementations
+- **Runtime**: Python 3.11 with Flask web framework
+- **Data Layer**: SQLite database for lightweight, embedded storage with automatic schema creation
+- **System Monitoring**: psutil library for accurate host system statistics (CPU, memory, disk, network interfaces)
+- **Network Tools**: Built-in ping functionality and network device discovery
+- **Monitoring Loop**: Background threading for continuous network monitoring and statistics collection
+- **Dual Monitoring**: Raspberry Pi nodes when available, automatic fallback to host-based monitoring
 
-The backend is designed to handle concurrent network monitoring tasks and provide real-time updates to connected clients.
+The Python backend provides better system integration and more reliable host monitoring capabilities.
 
 ### Database Design
 

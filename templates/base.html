@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NetMonitor Pro{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --popover: 222.2 84% 4.9%;
+            --popover-foreground: 210 40% 98%;
+            --primary: 217.2 91.2% 59.8%;
+            --primary-foreground: 222.2 84% 4.9%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 224.3 76.3% 94.1%;
+            --success: 142 76% 36%;
+            --warning: 38 92% 50%;
+            --surface: hsl(222.2, 84%, 6%);
+        }
+        
+        body {
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+        
+        .bg-surface { background-color: var(--surface); }
+        .text-primary { color: hsl(var(--primary)); }
+        .bg-primary { background-color: hsl(var(--primary)); }
+        .text-primary-foreground { color: hsl(var(--primary-foreground)); }
+        .text-muted-foreground { color: hsl(var(--muted-foreground)); }
+        .border-border { border-color: hsl(var(--border)); }
+        .text-success { color: hsl(var(--success)); }
+        .bg-success { background-color: hsl(var(--success)); }
+        .text-warning { color: hsl(var(--warning)); }
+        .bg-warning { background-color: hsl(var(--warning)); }
+        .text-destructive { color: hsl(var(--destructive)); }
+        .bg-destructive { background-color: hsl(var(--destructive)); }
+        
+        .card {
+            background-color: var(--surface);
+            border: 1px solid hsl(var(--border));
+            border-radius: 0.5rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-primary {
+            background-color: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+        }
+        
+        .btn-primary:hover {
+            background-color: hsl(var(--primary) / 0.9);
+        }
+        
+        .btn-outline {
+            border: 1px solid hsl(var(--border));
+            background-color: transparent;
+            color: hsl(var(--foreground));
+        }
+        
+        .btn-outline:hover {
+            background-color: hsl(var(--accent));
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 0.5rem;
+            background-color: hsl(var(--muted));
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: hsl(var(--primary));
+            transition: width 0.3s ease;
+        }
+        
+        .badge {
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background-color: hsl(var(--success));
+            color: white;
+        }
+        
+        .badge-warning {
+            background-color: hsl(var(--warning));
+            color: white;
+        }
+        
+        .badge-destructive {
+            background-color: hsl(var(--destructive));
+            color: white;
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            color: hsl(var(--foreground));
+            text-decoration: none;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+            margin-bottom: 0.25rem;
+        }
+        
+        .nav-item:hover {
+            background-color: hsl(var(--accent));
+            text-decoration: none;
+            color: hsl(var(--foreground));
+        }
+        
+        .nav-item.active {
+            background-color: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+        }
+        
+        .nav-item svg {
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-surface shadow-lg border-r border-border flex-shrink-0">
+            <div class="p-6 border-b border-border">
+                <h1 class="text-xl font-bold flex items-center">
+                    <i data-lucide="wifi" class="text-primary mr-3 h-6 w-6"></i>
+                    NetMonitor Pro
+                </h1>
+            </div>
+            
+            <nav class="p-4">
+                <a href="/" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i data-lucide="bar-chart-3"></i>
+                    Dashboard
+                </a>
+                <a href="/devices" class="nav-item">
+                    <i data-lucide="server"></i>
+                    Network Devices
+                </a>
+                <a href="/topology" class="nav-item">
+                    <i data-lucide="network"></i>
+                    Network Topology
+                </a>
+                <a href="/statistics" class="nav-item">
+                    <i data-lucide="trending-up"></i>
+                    Statistics & Analytics
+                </a>
+                <a href="/tools" class="nav-item">
+                    <i data-lucide="wrench"></i>
+                    Network Tools
+                </a>
+                <a href="/alerts" class="nav-item">
+                    <i data-lucide="bell"></i>
+                    Alerts & Monitoring
+                    <span id="alert-badge" class="badge badge-destructive ml-auto hidden">0</span>
+                </a>
+                <a href="/raspberry-pi" class="nav-item {% if request.endpoint == 'raspberry_pi_setup' %}active{% endif %}">
+                    <i data-lucide="cpu"></i>
+                    Raspberry Pi Setup
+                </a>
+                <a href="/reports" class="nav-item">
+                    <i data-lucide="file-down"></i>
+                    Export Reports
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-auto">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Auto-refresh data every 30 seconds
+        setInterval(() => {
+            if (typeof refreshData === 'function') {
+                refreshData();
+            }
+        }, 30000);
+        
+        // Load alerts count for badge
+        fetch('/api/alerts?resolved=false')
+            .then(response => response.json())
+            .then(data => {
+                const alertBadge = document.getElementById('alert-badge');
+                if (data.length > 0) {
+                    alertBadge.textContent = data.length;
+                    alertBadge.classList.remove('hidden');
+                }
+            })
+            .catch(error => console.log('Could not load alerts:', error));
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

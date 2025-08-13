@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - NetMonitor Pro{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<header class="bg-surface shadow-sm border-b border-border px-6 py-4">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold">Network Dashboard</h2>
+            <p class="text-sm text-muted-foreground">Real-time network monitoring and management</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2 text-sm">
+                <div id="network-status-dot" class="w-3 h-3 rounded-full bg-warning"></div>
+                <span>
+                    Network Status: <span id="network-status" class="font-medium text-warning">Loading...</span>
+                </span>
+            </div>
+            <div class="flex items-center space-x-2 text-sm">
+                <div id="websocket-dot" class="w-3 h-3 rounded-full bg-destructive"></div>
+                <span class="text-muted-foreground">
+                    Connection: <span id="websocket-status" class="text-destructive">Disconnected</span>
+                </span>
+            </div>
+            <button onclick="refreshData()" class="btn btn-outline">
+                <i data-lucide="rotate-ccw" class="h-4 w-4"></i>
+            </button>
+            <button class="btn btn-outline">
+                <i data-lucide="settings" class="h-4 w-4"></i>
+            </button>
+        </div>
+    </div>
+</header>
+
+<div class="p-6 space-y-6">
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted-foreground">Total Devices</p>
+                    <p id="total-devices" class="text-2xl font-bold">-</p>
+                </div>
+                <div class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                    <i data-lucide="server" class="h-6 w-6 text-primary"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted-foreground">Online Devices</p>
+                    <p id="online-devices" class="text-2xl font-bold text-success">-</p>
+                </div>
+                <div class="w-12 h-12 bg-success/20 rounded-full flex items-center justify-center">
+                    <i data-lucide="wifi" class="h-6 w-6 text-success"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted-foreground">Active Alerts</p>
+                    <p id="active-alerts" class="text-2xl font-bold text-warning">-</p>
+                </div>
+                <div class="w-12 h-12 bg-warning/20 rounded-full flex items-center justify-center">
+                    <i data-lucide="alert-triangle" class="h-6 w-6 text-warning"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted-foreground">Avg Latency</p>
+                    <p id="avg-latency" class="text-2xl font-bold">- ms</p>
+                </div>
+                <div class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                    <i data-lucide="zap" class="h-6 w-6 text-primary"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Network Traffic Chart -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Network Traffic</h3>
+                <div class="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <span>Last 24 hours</span>
+                </div>
+            </div>
+            <div class="h-64">
+                <canvas id="traffic-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Device Status Chart -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Device Status</h3>
+                <div class="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <span>Current status</span>
+                </div>
+            </div>
+            <div class="h-64">
+                <canvas id="status-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device List -->
+    <div class="card">
+        <div class="px-6 py-4 border-b border-border">
+            <h3 class="text-lg font-semibold">Network Devices</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-muted/50">
+                    <tr class="border-b border-border">
+                        <th class="text-left p-4 font-medium">Device Name</th>
+                        <th class="text-left p-4 font-medium">IP Address</th>
+                        <th class="text-left p-4 font-medium">Type</th>
+                        <th class="text-left p-4 font-medium">Status</th>
+                        <th class="text-left p-4 font-medium">Latency</th>
+                        <th class="text-left p-4 font-medium">Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody id="device-list">
+                    <tr>
+                        <td colspan="6" class="p-4 text-center text-muted-foreground">Loading devices...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tools and Setup Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Network Tools -->
+        <div class="card p-6">
+            <h3 class="text-lg font-semibold mb-4">Network Tools</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Target Host/IP</label>
+                    <input type="text" id="ping-target" placeholder="192.168.1.1" 
+                           class="w-full p-2 border border-border rounded bg-background">
+                </div>
+                <button onclick="runPing()" class="btn btn-primary w-full">
+                    <i data-lucide="activity" class="h-4 w-4 mr-2"></i>
+                    Ping Test
+                </button>
+                <div id="ping-result" class="hidden p-3 rounded bg-muted border text-sm"></div>
+            </div>
+        </div>
+
+        <!-- Raspberry Pi Setup -->
+        <div class="card p-6">
+            <h3 class="text-lg font-semibold mb-4">Raspberry Pi Monitoring</h3>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm">Connected Nodes</span>
+                    <span id="pi-count" class="badge badge-success">0</span>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-sm text-muted-foreground">Quick Setup:</div>
+                    <code class="block text-xs bg-muted p-2 rounded">curl -sSL {{ request.host_url }}install.sh | bash</code>
+                </div>
+                <a href="/raspberry-pi" class="btn btn-outline w-full">
+                    <i data-lucide="cpu" class="h-4 w-4 mr-2"></i>
+                    Setup Guide
+                </a>
+            </div>
+        </div>
+
+        <!-- Host System Stats -->
+        <div class="card p-6">
+            <h3 class="text-lg font-semibold mb-4">Host System</h3>
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span>CPU Usage</span>
+                        <span id="host-cpu">-%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="cpu-progress" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span>Memory Usage</span>
+                        <span id="host-memory">-%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="memory-progress" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span>Disk Usage</span>
+                        <span id="host-disk">-%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="disk-progress" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="text-xs text-muted-foreground">
+                    <span>Uptime: </span><span id="host-uptime">- hours</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Section -->
+    <div class="card">
+        <div class="px-6 py-4 border-b border-border">
+            <h3 class="text-lg font-semibold">Recent Alerts</h3>
+        </div>
+        <div id="alerts-list" class="p-6">
+            <div class="text-center text-muted-foreground">Loading alerts...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let trafficChart, statusChart;
+    
+    // Initialize charts
+    function initCharts() {
+        // Traffic Chart
+        const trafficCtx = document.getElementById('traffic-chart').getContext('2d');
+        trafficChart = new Chart(trafficCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Download (Mbps)',
+                    data: [],
+                    borderColor: 'hsl(217.2, 91.2%, 59.8%)',
+                    backgroundColor: 'hsla(217.2, 91.2%, 59.8%, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Upload (Mbps)',
+                    data: [],
+                    borderColor: 'hsl(142, 76%, 36%)',
+                    backgroundColor: 'hsla(142, 76%, 36%, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: 'hsl(210, 40%, 98%)' }
+                    }
+                },
+                scales: {
+                    x: { 
+                        ticks: { color: 'hsl(215, 20.2%, 65.1%)' },
+                        grid: { color: 'hsl(217.2, 32.6%, 17.5%)' }
+                    },
+                    y: { 
+                        ticks: { color: 'hsl(215, 20.2%, 65.1%)' },
+                        grid: { color: 'hsl(217.2, 32.6%, 17.5%)' }
+                    }
+                }
+            }
+        });
+
+        // Status Chart
+        const statusCtx = document.getElementById('status-chart').getContext('2d');
+        statusChart = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Online', 'Offline', 'Warning'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: [
+                        'hsl(142, 76%, 36%)',
+                        'hsl(0, 62.8%, 30.6%)',
+                        'hsl(38, 92%, 50%)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: 'hsl(210, 40%, 98%)' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Refresh all data
+    function refreshData() {
+        loadDashboardOverview();
+        loadNetworkDevices();
+        loadHostStats();
+        loadNetworkStats();
+        loadAlerts();
+        loadRaspberryPiNodes();
+    }
+
+    // Load dashboard overview
+    function loadDashboardOverview() {
+        fetch('/api/dashboard/overview')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-devices').textContent = data.totalDevices;
+                document.getElementById('online-devices').textContent = data.onlineDevices;
+                document.getElementById('active-alerts').textContent = data.activeAlerts;
+                document.getElementById('avg-latency').textContent = data.avgLatency + ' ms';
+
+                // Update network status
+                const status = data.onlineDevices > data.offlineDevices ? 'Healthy' : 'Warning';
+                const statusElement = document.getElementById('network-status');
+                const statusDot = document.getElementById('network-status-dot');
+                
+                statusElement.textContent = status;
+                if (status === 'Healthy') {
+                    statusElement.className = 'font-medium text-success';
+                    statusDot.className = 'w-3 h-3 rounded-full bg-success';
+                } else {
+                    statusElement.className = 'font-medium text-warning';
+                    statusDot.className = 'w-3 h-3 rounded-full bg-warning';
+                }
+
+                // Update status chart
+                statusChart.data.datasets[0].data = [data.onlineDevices, data.offlineDevices, 0];
+                statusChart.update();
+            })
+            .catch(error => console.error('Error loading overview:', error));
+    }
+
+    // Load network devices
+    function loadNetworkDevices() {
+        fetch('/api/network-devices')
+            .then(response => response.json())
+            .then(devices => {
+                const tbody = document.getElementById('device-list');
+                
+                if (devices.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-muted-foreground">No devices found</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = devices.map(device => {
+                    const statusBadge = getStatusBadge(device.status);
+                    const latency = device.latency ? device.latency + ' ms' : 'N/A';
+                    const lastSeen = device.lastSeen ? new Date(device.lastSeen).toLocaleString() : 'Never';
+                    
+                    return `
+                        <tr class="border-b border-border hover:bg-muted/50">
+                            <td class="p-4 font-medium">${device.name}</td>
+                            <td class="p-4">${device.ipAddress}</td>
+                            <td class="p-4">${device.type}</td>
+                            <td class="p-4">${statusBadge}</td>
+                            <td class="p-4">${latency}</td>
+                            <td class="p-4 text-sm text-muted-foreground">${lastSeen}</td>
+                        </tr>
+                    `;
+                }).join('');
+            })
+            .catch(error => console.error('Error loading devices:', error));
+    }
+
+    // Load host system stats
+    function loadHostStats() {
+        fetch('/api/host/stats')
+            .then(response => response.json())
+            .then(stats => {
+                document.getElementById('host-cpu').textContent = stats.cpuUsage + '%';
+                document.getElementById('host-memory').textContent = stats.memoryUsage + '%';
+                document.getElementById('host-disk').textContent = stats.diskUsage + '%';
+                document.getElementById('host-uptime').textContent = stats.uptime + ' hours';
+
+                document.getElementById('cpu-progress').style.width = stats.cpuUsage + '%';
+                document.getElementById('memory-progress').style.width = stats.memoryUsage + '%';
+                document.getElementById('disk-progress').style.width = stats.diskUsage + '%';
+            })
+            .catch(error => console.error('Error loading host stats:', error));
+    }
+
+    // Load network statistics for chart
+    function loadNetworkStats() {
+        fetch('/api/network-stats?limit=20')
+            .then(response => response.json())
+            .then(stats => {
+                if (stats.length === 0) return;
+
+                const labels = stats.map(s => new Date(s.timestamp).toLocaleTimeString()).reverse();
+                const downloads = stats.map(s => s.downloadSpeed).reverse();
+                const uploads = stats.map(s => s.uploadSpeed).reverse();
+
+                trafficChart.data.labels = labels;
+                trafficChart.data.datasets[0].data = downloads;
+                trafficChart.data.datasets[1].data = uploads;
+                trafficChart.update();
+            })
+            .catch(error => console.error('Error loading network stats:', error));
+    }
+
+    // Load alerts
+    function loadAlerts() {
+        fetch('/api/alerts?resolved=false')
+            .then(response => response.json())
+            .then(alerts => {
+                const container = document.getElementById('alerts-list');
+                
+                if (alerts.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted-foreground">No active alerts</div>';
+                    return;
+                }
+
+                container.innerHTML = alerts.slice(0, 5).map(alert => {
+                    const severityBadge = getSeverityBadge(alert.severity);
+                    const time = new Date(alert.createdAt).toLocaleString();
+                    
+                    return `
+                        <div class="flex items-center justify-between p-3 border-b border-border last:border-b-0">
+                            <div class="flex items-center space-x-3">
+                                ${severityBadge}
+                                <div>
+                                    <div class="font-medium">${alert.message}</div>
+                                    <div class="text-sm text-muted-foreground">${alert.deviceName || 'System'} • ${time}</div>
+                                </div>
+                            </div>
+                            <button class="text-muted-foreground hover:text-foreground">
+                                <i data-lucide="x" class="h-4 w-4"></i>
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+                
+                lucide.createIcons();
+            })
+            .catch(error => console.error('Error loading alerts:', error));
+    }
+
+    // Load Raspberry Pi nodes
+    function loadRaspberryPiNodes() {
+        fetch('/api/raspberry-pi')
+            .then(response => response.json())
+            .then(nodes => {
+                document.getElementById('pi-count').textContent = nodes.length;
+            })
+            .catch(error => {
+                console.log('Raspberry Pi service not available, using host monitoring');
+                document.getElementById('pi-count').textContent = '0';
+            });
+    }
+
+    // Utility functions
+    function getStatusBadge(status) {
+        const badges = {
+            'online': '<span class="badge badge-success">Online</span>',
+            'offline': '<span class="badge badge-destructive">Offline</span>',
+            'warning': '<span class="badge badge-warning">Warning</span>'
+        };
+        return badges[status] || '<span class="badge">Unknown</span>';
+    }
+
+    function getSeverityBadge(severity) {
+        const badges = {
+            'critical': '<span class="badge badge-destructive">Critical</span>',
+            'warning': '<span class="badge badge-warning">Warning</span>',
+            'info': '<span class="badge badge-success">Info</span>'
+        };
+        return badges[severity] || '<span class="badge">Unknown</span>';
+    }
+
+    // Ping tool
+    function runPing() {
+        const target = document.getElementById('ping-target').value;
+        if (!target) {
+            alert('Please enter a target host or IP address');
+            return;
+        }
+
+        const resultDiv = document.getElementById('ping-result');
+        resultDiv.innerHTML = 'Running ping test...';
+        resultDiv.classList.remove('hidden');
+
+        fetch('/api/network-tools/ping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target, count: 4 })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                const latency = result.latency ? ` (${result.latency} ms)` : '';
+                resultDiv.innerHTML = `<strong>Success:</strong> ${target} is reachable${latency}`;
+                resultDiv.className = 'p-3 rounded bg-success/20 border border-success text-sm';
+            } else {
+                resultDiv.innerHTML = `<strong>Failed:</strong> ${target} is not reachable`;
+                resultDiv.className = 'p-3 rounded bg-destructive/20 border border-destructive text-sm';
+            }
+        })
+        .catch(error => {
+            resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+            resultDiv.className = 'p-3 rounded bg-destructive/20 border border-destructive text-sm';
+        });
+    }
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initCharts();
+        refreshData();
+        
+        // Update connection status
+        document.getElementById('websocket-status').textContent = 'Connected';
+        document.getElementById('websocket-dot').className = 'w-3 h-3 rounded-full bg-success';
+    });
+</script>
+{% endblock %}
