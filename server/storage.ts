@@ -152,6 +152,7 @@ export class MemStorage implements IStorage {
     const device: NetworkDevice = {
       ...insertDevice,
       id,
+      status: insertDevice.status || "unknown",
       lastSeen: now,
       createdAt: now,
       updatedAt: now,
@@ -189,9 +190,14 @@ export class MemStorage implements IStorage {
   async createNetworkStats(insertStats: InsertNetworkStats): Promise<NetworkStats> {
     const id = randomUUID();
     const stats: NetworkStats = {
-      ...insertStats,
       id,
+      deviceId: insertStats.deviceId || null,
       timestamp: new Date(),
+      uploadSpeed: insertStats.uploadSpeed || null,
+      downloadSpeed: insertStats.downloadSpeed || null,
+      utilization: insertStats.utilization || null,
+      packetLoss: insertStats.packetLoss || null,
+      latency: insertStats.latency || null,
     };
     this.networkStats.set(id, stats);
     return stats;
@@ -200,9 +206,9 @@ export class MemStorage implements IStorage {
   async getLatestNetworkStats(): Promise<NetworkStats[]> {
     const deviceStats = new Map<string, NetworkStats>();
     Array.from(this.networkStats.values()).forEach(stat => {
-      if (stat.deviceId) {
+      if (stat.deviceId && stat.timestamp) {
         const existing = deviceStats.get(stat.deviceId);
-        if (!existing || stat.timestamp > existing.timestamp) {
+        if (!existing || (existing.timestamp && stat.timestamp > existing.timestamp)) {
           deviceStats.set(stat.deviceId, stat);
         }
       }
@@ -216,14 +222,21 @@ export class MemStorage implements IStorage {
     if (isResolved !== undefined) {
       alerts = alerts.filter(alert => alert.isResolved === isResolved);
     }
-    return alerts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return alerts.sort((a, b) => {
+      const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+      const bTime = b.createdAt ? b.createdAt.getTime() : 0;
+      return bTime - aTime;
+    });
   }
 
   async createAlert(insertAlert: InsertAlert): Promise<Alert> {
     const id = randomUUID();
     const alert: Alert = {
-      ...insertAlert,
       id,
+      deviceId: insertAlert.deviceId || null,
+      severity: insertAlert.severity,
+      type: insertAlert.type,
+      message: insertAlert.message,
       isResolved: false,
       createdAt: new Date(),
       resolvedAt: null,

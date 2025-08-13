@@ -8,6 +8,7 @@ import DeviceStatusChart from "@/components/DeviceStatusChart";
 import DeviceList from "@/components/DeviceList";
 import NetworkTools from "@/components/NetworkTools";
 import RaspberryPiSetup from "@/components/RaspberryPiSetup";
+import HostStatsCard from "@/components/HostStatsCard";
 import AlertsSection from "@/components/AlertsSection";
 import { Wifi, Settings, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -105,9 +106,10 @@ export default function Dashboard() {
 
           <DeviceList />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <NetworkTools />
             <RaspberryPiSetup />
+            <HostStatsCard />
           </div>
 
           <AlertsSection />

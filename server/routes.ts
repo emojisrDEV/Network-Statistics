@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { NetworkTools } from "./services/networkTools";
+import { hostMonitor } from "./services/hostMonitor";
 import { 
   insertNetworkDeviceSchema,
   insertAlertSchema,
@@ -157,6 +158,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(overview);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch dashboard overview" });
+    }
+  });
+
+  // Get host system statistics
+  app.get("/api/host/stats", async (req, res) => {
+    try {
+      const stats = await hostMonitor.getSystemStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Host stats error:', error);
+      res.status(500).json({ error: 'Failed to fetch host statistics' });
     }
   });
 
@@ -403,6 +415,12 @@ sudo systemctl status netmonitor --no-pager
     res.setHeader('Content-Type', 'text/plain');
     res.sendFile(__dirname + '/../../raspberry-pi/monitor.py');
   });
+
+  // Start host monitoring
+  console.log('Starting host-based network monitoring...');
+  hostMonitor.startMonitoring();
+
+  console.log("Host monitoring active - collecting network statistics");
 
   return httpServer;
 }

@@ -28,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 class NetMonitorAgent:
     def __init__(self):
-        self.server_url = os.environ.get('NETMONITOR_SERVER', 'http://localhost:5000')
+        self.server_url = os.environ.get('NETMONITOR_SERVER', 'http://localhost:3000')
+        # Ensure server URL doesn't have trailing slash
+        if self.server_url.endswith('/'):
+            self.server_url = self.server_url[:-1]
         self.node_name = os.environ.get('NETMONITOR_NAME', self.get_hostname())
         self.ip_address = self.get_local_ip()
         self.version = "1.0.0"

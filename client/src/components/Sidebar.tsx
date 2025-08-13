@@ -50,8 +50,8 @@ export default function Sidebar() {
           
           return (
             <Link key={item.path} href={item.path}>
-              <a 
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+              <div 
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                   isActive 
                     ? "text-primary-foreground bg-primary" 
                     : "text-foreground hover:bg-accent hover:text-accent-foreground"
@@ -65,7 +65,7 @@ export default function Sidebar() {
                     {activeAlerts.length}
                   </Badge>
                 )}
-              </a>
+              </div>
             </Link>
           );
         })}
