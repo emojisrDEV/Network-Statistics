@@ -1,0 +1,395 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics & Analytics - NetMonitor Pro{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold">Statistics & Analytics</h1>
+            <p class="text-muted-foreground">Detailed network performance metrics and trends</p>
+        </div>
+        <div class="flex gap-2">
+            <select id="timeRange" class="p-2 border border-border rounded bg-surface text-foreground">
+                <option value="1h">Last Hour</option>
+                <option value="24h" selected>Last 24 Hours</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+            </select>
+            <button class="btn btn-outline" onclick="exportData()">
+                <i data-lucide="download" class="mr-2"></i>
+                Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Key Metrics Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div class="card p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted-foreground">Average Latency</p>
+                    <p class="text-2xl font-bold" id="avgLatency">0ms</p>
+                </div>
+                <i data-lucide="timer" class="h-8 w-8 text-primary"></i>
+            </div>
+            <div class="mt-2">
+                <span class="text-xs text-success">↓ 12ms from yesterday</span>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted-foreground">Packet Loss</p>
+                    <p class="text-2xl font-bold" id="packetLoss">0%</p>
+                </div>
+                <i data-lucide="wifi-off" class="h-8 w-8 text-warning"></i>
+            </div>
+            <div class="mt-2">
+                <span class="text-xs text-success">↓ 0.2% from yesterday</span>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted-foreground">Total Bandwidth</p>
+                    <p class="text-2xl font-bold" id="totalBandwidth">0 Mbps</p>
+                </div>
+                <i data-lucide="activity" class="h-8 w-8 text-success"></i>
+            </div>
+            <div class="mt-2">
+                <span class="text-xs text-success">↑ 15% from yesterday</span>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted-foreground">Uptime</p>
+                    <p class="text-2xl font-bold" id="networkUptime">99.9%</p>
+                </div>
+                <i data-lucide="clock" class="h-8 w-8 text-primary"></i>
+            </div>
+            <div class="mt-2">
+                <span class="text-xs text-success">Excellent</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Network Traffic Chart -->
+        <div class="card p-4">
+            <h3 class="font-medium mb-4">Network Traffic Over Time</h3>
+            <div class="relative" style="height: 300px;">
+                <canvas id="trafficChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Latency Chart -->
+        <div class="card p-4">
+            <h3 class="font-medium mb-4">Network Latency</h3>
+            <div class="relative" style="height: 300px;">
+                <canvas id="latencyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Performance Table -->
+    <div class="card">
+        <div class="p-4 border-b border-border">
+            <h3 class="font-medium">Device Performance Summary</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-muted">
+                    <tr>
+                        <th class="text-left p-3 font-medium">Device</th>
+                        <th class="text-left p-3 font-medium">Status</th>
+                        <th class="text-left p-3 font-medium">Avg Latency</th>
+                        <th class="text-left p-3 font-medium">Packet Loss</th>
+                        <th class="text-left p-3 font-medium">Uptime</th>
+                        <th class="text-left p-3 font-medium">Last Updated</th>
+                    </tr>
+                </thead>
+                <tbody id="deviceStatsTable">
+                    <!-- Device stats will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+let trafficChart, latencyChart;
+
+async function loadStatistics() {
+    try {
+        const [statsResponse, devicesResponse, networkResponse] = await Promise.all([
+            fetch('/api/network-stats'),
+            fetch('/api/network-devices'),
+            fetch('/api/dashboard/overview')
+        ]);
+        
+        const stats = await statsResponse.json();
+        const devices = await devicesResponse.json();
+        const overview = await networkResponse.json();
+        
+        updateMetrics(stats, overview);
+        updateCharts(stats);
+        updateDeviceTable(devices, stats);
+        
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+    }
+}
+
+function updateMetrics(stats, overview) {
+    // Calculate average latency
+    const avgLatency = stats.length > 0 ? 
+        Math.round(stats.reduce((sum, stat) => sum + (stat.latency || 0), 0) / stats.length) : 0;
+    document.getElementById('avgLatency').textContent = avgLatency + 'ms';
+    
+    // Calculate average packet loss
+    const avgPacketLoss = stats.length > 0 ?
+        (stats.reduce((sum, stat) => sum + (stat.packetLoss || 0), 0) / stats.length).toFixed(1) : 0;
+    document.getElementById('packetLoss').textContent = avgPacketLoss + '%';
+    
+    // Calculate total bandwidth
+    const totalBandwidth = stats.length > 0 ?
+        Math.round(stats.reduce((sum, stat) => sum + (stat.uploadSpeed || 0) + (stat.downloadSpeed || 0), 0)) : 0;
+    document.getElementById('totalBandwidth').textContent = totalBandwidth + ' Mbps';
+    
+    // Update uptime
+    const uptime = overview.totalDevices > 0 ? 
+        ((overview.onlineDevices / overview.totalDevices) * 100).toFixed(1) : 0;
+    document.getElementById('networkUptime').textContent = uptime + '%';
+}
+
+function updateCharts(stats) {
+    // Prepare data for charts
+    const last24Hours = [];
+    const now = new Date();
+    
+    for (let i = 23; i >= 0; i--) {
+        const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
+        last24Hours.push({
+            time: hour.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            traffic: Math.random() * 100 + 20, // Simulated data
+            latency: Math.random() * 50 + 10
+        });
+    }
+    
+    // Update traffic chart
+    if (trafficChart) {
+        trafficChart.destroy();
+    }
+    
+    const trafficCtx = document.getElementById('trafficChart').getContext('2d');
+    trafficChart = new Chart(trafficCtx, {
+        type: 'line',
+        data: {
+            labels: last24Hours.map(d => d.time),
+            datasets: [{
+                label: 'Traffic (Mbps)',
+                data: last24Hours.map(d => d.traffic),
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(75, 85, 99, 0.3)'
+                    },
+                    ticks: {
+                        color: 'rgb(156, 163, 175)'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(75, 85, 99, 0.3)'
+                    },
+                    ticks: {
+                        color: 'rgb(156, 163, 175)',
+                        maxTicksLimit: 8
+                    }
+                }
+            }
+        }
+    });
+    
+    // Update latency chart
+    if (latencyChart) {
+        latencyChart.destroy();
+    }
+    
+    const latencyCtx = document.getElementById('latencyChart').getContext('2d');
+    latencyChart = new Chart(latencyCtx, {
+        type: 'line',
+        data: {
+            labels: last24Hours.map(d => d.time),
+            datasets: [{
+                label: 'Latency (ms)',
+                data: last24Hours.map(d => d.latency),
+                borderColor: 'rgb(16, 185, 129)',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(75, 85, 99, 0.3)'
+                    },
+                    ticks: {
+                        color: 'rgb(156, 163, 175)'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(75, 85, 99, 0.3)'
+                    },
+                    ticks: {
+                        color: 'rgb(156, 163, 175)',
+                        maxTicksLimit: 8
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateDeviceTable(devices, stats) {
+    const tbody = document.getElementById('deviceStatsTable');
+    
+    tbody.innerHTML = devices.map(device => {
+        // Find relevant stats for this device (simplified)
+        const deviceStats = stats.filter(s => s.deviceId === device.id);
+        const avgLatency = deviceStats.length > 0 ?
+            Math.round(deviceStats.reduce((sum, s) => sum + (s.latency || 0), 0) / deviceStats.length) : 0;
+        const packetLoss = deviceStats.length > 0 ?
+            (deviceStats.reduce((sum, s) => sum + (s.packetLoss || 0), 0) / deviceStats.length).toFixed(1) : 0;
+        
+        return `
+            <tr class="border-b border-border hover:bg-accent">
+                <td class="p-3">
+                    <div class="flex items-center">
+                        <i data-lucide="${getDeviceIcon(device.type)}" class="h-4 w-4 text-primary mr-2"></i>
+                        <div>
+                            <div class="font-medium">${device.name}</div>
+                            <div class="text-sm text-muted-foreground">${device.ipAddress}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="p-3">
+                    <span class="badge ${getStatusClass(device.status)}">${device.status}</span>
+                </td>
+                <td class="p-3">${avgLatency}ms</td>
+                <td class="p-3">${packetLoss}%</td>
+                <td class="p-3">${getUptime(device.status)}</td>
+                <td class="p-3 text-sm text-muted-foreground">${formatTime(device.lastSeen)}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    lucide.createIcons();
+}
+
+function getDeviceIcon(type) {
+    const icons = {
+        'router': 'router',
+        'switch': 'network',
+        'access_point': 'wifi',
+        'server': 'server',
+        'raspberry_pi': 'cpu',
+        'workstation': 'monitor',
+        'other': 'box'
+    };
+    return icons[type] || 'box';
+}
+
+function getStatusClass(status) {
+    switch (status.toLowerCase()) {
+        case 'online': return 'badge-success';
+        case 'offline': return 'badge-destructive';
+        case 'warning': return 'badge-warning';
+        default: return '';
+    }
+}
+
+function getUptime(status) {
+    if (status.toLowerCase() === 'online') {
+        return Math.floor(Math.random() * 30) + 70 + '%'; // Simulated uptime
+    }
+    return '0%';
+}
+
+function formatTime(timestamp) {
+    if (!timestamp) return 'Never';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+    return Math.floor(diff / 86400000) + 'd ago';
+}
+
+function exportData() {
+    // Simulate data export
+    const data = {
+        timestamp: new Date().toISOString(),
+        metrics: {
+            avgLatency: document.getElementById('avgLatency').textContent,
+            packetLoss: document.getElementById('packetLoss').textContent,
+            totalBandwidth: document.getElementById('totalBandwidth').textContent,
+            uptime: document.getElementById('networkUptime').textContent
+        }
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `network-stats-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Event listeners
+document.getElementById('timeRange').addEventListener('change', loadStatistics);
+
+// Load statistics on page load
+loadStatistics();
+
+// Auto-refresh every 30 seconds
+setInterval(loadStatistics, 30000);
+</script>
+{% endblock %}

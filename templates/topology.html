@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}Network Topology - NetMonitor Pro{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold">Network Topology</h1>
+            <p class="text-muted-foreground">Visual representation of your network infrastructure</p>
+        </div>
+        <div class="flex gap-2">
+            <button class="btn btn-outline" onclick="refreshTopology()">
+                <i data-lucide="refresh-cw" class="mr-2"></i>
+                Refresh
+            </button>
+            <button class="btn btn-primary" onclick="autoLayout()">
+                <i data-lucide="layout" class="mr-2"></i>
+                Auto Layout
+            </button>
+        </div>
+    </div>
+
+    <!-- Network Map Controls -->
+    <div class="card p-4 mb-6">
+        <div class="flex flex-wrap gap-4 items-center">
+            <div>
+                <label class="block text-sm font-medium mb-1">View Mode</label>
+                <select id="viewMode" class="p-2 border border-border rounded bg-surface text-foreground">
+                    <option value="logical">Logical View</option>
+                    <option value="physical">Physical View</option>
+                    <option value="traffic">Traffic View</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Show Labels</label>
+                <label class="flex items-center">
+                    <input type="checkbox" id="showLabels" checked class="mr-2">
+                    <span class="text-sm">Device Names</span>
+                </label>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Show Traffic</label>
+                <label class="flex items-center">
+                    <input type="checkbox" id="showTraffic" class="mr-2">
+                    <span class="text-sm">Traffic Flow</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Map Canvas -->
+    <div class="card">
+        <div class="relative bg-surface" style="height: 600px;">
+            <canvas id="networkCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+            
+            <!-- Map Legend -->
+            <div class="absolute top-4 right-4 card p-3" style="background: rgba(34, 40, 49, 0.9);">
+                <h3 class="font-medium mb-2 text-sm">Legend</h3>
+                <div class="space-y-1 text-xs">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded bg-green-500 mr-2"></div>
+                        <span>Online</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded bg-red-500 mr-2"></div>
+                        <span>Offline</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded bg-yellow-500 mr-2"></div>
+                        <span>Warning</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-3 h-1 bg-blue-500 mr-2"></div>
+                        <span>Connection</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+        <div class="card p-4">
+            <h3 class="font-medium mb-2">Network Health</h3>
+            <div class="text-2xl font-bold text-success" id="networkHealth">98%</div>
+            <p class="text-sm text-muted-foreground">Overall network status</p>
+        </div>
+        
+        <div class="card p-4">
+            <h3 class="font-medium mb-2">Active Connections</h3>
+            <div class="text-2xl font-bold text-primary" id="activeConnections">0</div>
+            <p class="text-sm text-muted-foreground">Currently active links</p>
+        </div>
+        
+        <div class="card p-4">
+            <h3 class="font-medium mb-2">Total Devices</h3>
+            <div class="text-2xl font-bold text-foreground" id="totalDevices">0</div>
+            <p class="text-sm text-muted-foreground">Discovered devices</p>
+        </div>
+    </div>
+</div>
+
+<script>
+let canvas, ctx;
+let devices = [];
+let connections = [];
+let isDragging = false;
+let dragTarget = null;
+let dragOffset = { x: 0, y: 0 };
+
+class NetworkDevice {
+    constructor(data) {
+        this.id = data.id;
+        this.name = data.name;
+        this.type = data.type;
+        this.status = data.status;
+        this.ipAddress = data.ipAddress;
+        this.x = Math.random() * 500 + 50;
+        this.y = Math.random() * 400 + 50;
+        this.radius = this.getRadius();
+        this.color = this.getColor();
+    }
+    
+    getRadius() {
+        const sizes = {
+            'router': 25,
+            'switch': 20,
+            'server': 22,
+            'raspberry_pi': 18,
+            'access_point': 16,
+            'workstation': 14,
+            'other': 12
+        };
+        return sizes[this.type] || 12;
+    }
+    
+    getColor() {
+        switch (this.status.toLowerCase()) {
+            case 'online': return '#10b981';
+            case 'offline': return '#ef4444';
+            case 'warning': return '#f59e0b';
+            default: return '#6b7280';
+        }
+    }
+    
+    draw() {
+        // Draw device circle
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Draw device icon (simplified)
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.getIcon(), this.x, this.y + 4);
+        
+        // Draw label if enabled
+        if (document.getElementById('showLabels').checked) {
+            ctx.fillStyle = '#f9fafb';
+            ctx.font = '10px Arial';
+            ctx.fillText(this.name, this.x, this.y + this.radius + 12);
+        }
+    }
+    
+    getIcon() {
+        const icons = {
+            'router': 'R',
+            'switch': 'S',
+            'server': '◼',
+            'raspberry_pi': 'π',
+            'access_point': 'W',
+            'workstation': '●',
+            'other': '○'
+        };
+        return icons[this.type] || '○';
+    }
+    
+    contains(x, y) {
+        const dx = x - this.x;
+        const dy = y - this.y;
+        return dx * dx + dy * dy <= this.radius * this.radius;
+    }
+}
+
+class NetworkConnection {
+    constructor(device1, device2, strength = 1) {
+        this.device1 = device1;
+        this.device2 = device2;
+        this.strength = strength;
+    }
+    
+    draw() {
+        ctx.beginPath();
+        ctx.moveTo(this.device1.x, this.device1.y);
+        ctx.lineTo(this.device2.x, this.device2.y);
+        
+        // Line style based on connection strength
+        ctx.strokeStyle = `rgba(59, 130, 246, ${this.strength})`;
+        ctx.lineWidth = Math.max(1, this.strength * 3);
+        
+        // Animate traffic if enabled
+        if (document.getElementById('showTraffic').checked) {
+            ctx.setLineDash([5, 5]);
+            ctx.lineDashOffset = Date.now() / 100;
+        } else {
+            ctx.setLineDash([]);
+        }
+        
+        ctx.stroke();
+    }
+}
+
+async function loadNetworkData() {
+    try {
+        const [devicesResponse, statsResponse] = await Promise.all([
+            fetch('/api/network-devices'),
+            fetch('/api/dashboard/overview')
+        ]);
+        
+        const devicesData = await devicesResponse.json();
+        const statsData = await statsResponse.json();
+        
+        // Create device objects
+        devices = devicesData.map(data => new NetworkDevice(data));
+        
+        // Create connections (simplified logic)
+        connections = [];
+        if (devices.length > 1) {
+            // Connect all devices to the first router/gateway
+            const gateway = devices.find(d => d.type === 'router') || devices[0];
+            devices.forEach(device => {
+                if (device !== gateway) {
+                    connections.push(new NetworkConnection(gateway, device, 0.8));
+                }
+            });
+        }
+        
+        // Update statistics
+        document.getElementById('totalDevices').textContent = devices.length;
+        document.getElementById('activeConnections').textContent = connections.length;
+        document.getElementById('networkHealth').textContent = 
+            statsData.onlineDevices && statsData.totalDevices ? 
+            Math.round((statsData.onlineDevices / statsData.totalDevices) * 100) + '%' : '0%';
+        
+        redrawCanvas();
+        
+    } catch (error) {
+        console.error('Error loading network data:', error);
+    }
+}
+
+function initCanvas() {
+    canvas = document.getElementById('networkCanvas');
+    ctx = canvas.getContext('2d');
+    
+    // Set canvas size
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    
+    // Mouse event handlers
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('mouseleave', handleMouseUp);
+    
+    // Touch event handlers for mobile
+    canvas.addEventListener('touchstart', handleTouchStart);
+    canvas.addEventListener('touchmove', handleTouchMove);
+    canvas.addEventListener('touchend', handleTouchEnd);
+}
+
+function handleMouseDown(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    dragTarget = devices.find(device => device.contains(x, y));
+    if (dragTarget) {
+        isDragging = true;
+        dragOffset = { x: x - dragTarget.x, y: y - dragTarget.y };
+        canvas.style.cursor = 'grabbing';
+    }
+}
+
+function handleMouseMove(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    if (isDragging && dragTarget) {
+        dragTarget.x = x - dragOffset.x;
+        dragTarget.y = y - dragOffset.y;
+        
+        // Keep device within canvas bounds
+        dragTarget.x = Math.max(dragTarget.radius, Math.min(canvas.width - dragTarget.radius, dragTarget.x));
+        dragTarget.y = Math.max(dragTarget.radius, Math.min(canvas.height - dragTarget.radius, dragTarget.y));
+        
+        redrawCanvas();
+    } else {
+        // Change cursor when hovering over devices
+        const hoverDevice = devices.find(device => device.contains(x, y));
+        canvas.style.cursor = hoverDevice ? 'grab' : 'default';
+    }
+}
+
+function handleMouseUp() {
+    isDragging = false;
+    dragTarget = null;
+    canvas.style.cursor = 'default';
+}
+
+function handleTouchStart(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent('mousedown', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    canvas.dispatchEvent(mouseEvent);
+}
+
+function handleTouchMove(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent('mousemove', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    canvas.dispatchEvent(mouseEvent);
+}
+
+function handleTouchEnd(e) {
+    e.preventDefault();
+    const mouseEvent = new MouseEvent('mouseup', {});
+    canvas.dispatchEvent(mouseEvent);
+}
+
+function redrawCanvas() {
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw connections first (behind devices)
+    connections.forEach(connection => connection.draw());
+    
+    // Draw devices
+    devices.forEach(device => device.draw());
+}
+
+function autoLayout() {
+    if (devices.length === 0) return;
+    
+    // Simple circular layout
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = Math.min(centerX, centerY) - 50;
+    
+    if (devices.length === 1) {
+        devices[0].x = centerX;
+        devices[0].y = centerY;
+    } else {
+        devices.forEach((device, index) => {
+            const angle = (2 * Math.PI * index) / devices.length;
+            device.x = centerX + radius * Math.cos(angle);
+            device.y = centerY + radius * Math.sin(angle);
+        });
+    }
+    
+    redrawCanvas();
+}
+
+function refreshTopology() {
+    loadNetworkData();
+}
+
+// Event listeners
+document.getElementById('viewMode').addEventListener('change', redrawCanvas);
+document.getElementById('showLabels').addEventListener('change', redrawCanvas);
+document.getElementById('showTraffic').addEventListener('change', redrawCanvas);
+
+// Initialize
+window.addEventListener('resize', () => {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    redrawCanvas();
+});
+
+// Load data and initialize canvas
+initCanvas();
+loadNetworkData();
+
+// Auto-refresh every 30 seconds
+setInterval(loadNetworkData, 30000);
+
+// Animation loop for traffic flow
+function animate() {
+    if (document.getElementById('showTraffic').checked) {
+        redrawCanvas();
+    }
+    requestAnimationFrame(animate);
+}
+animate();
+</script>
+{% endblock %}

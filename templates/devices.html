@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Network Devices - NetMonitor Pro{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold">Network Devices</h1>
+            <p class="text-muted-foreground">Manage and monitor all network devices</p>
+        </div>
+        <button class="btn btn-primary" onclick="scanDevices()">
+            <i data-lucide="search" class="mr-2"></i>
+            Scan Network
+        </button>
+    </div>
+
+    <!-- Device Filters -->
+    <div class="card p-4 mb-6">
+        <div class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-48">
+                <label class="block text-sm font-medium mb-2">Device Type</label>
+                <select id="deviceTypeFilter" class="w-full p-2 border border-border rounded bg-surface text-foreground">
+                    <option value="">All Types</option>
+                    <option value="router">Router</option>
+                    <option value="switch">Switch</option>
+                    <option value="access_point">Access Point</option>
+                    <option value="server">Server</option>
+                    <option value="raspberry_pi">Raspberry Pi</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-48">
+                <label class="block text-sm font-medium mb-2">Status</label>
+                <select id="statusFilter" class="w-full p-2 border border-border rounded bg-surface text-foreground">
+                    <option value="">All Status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="warning">Warning</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-48">
+                <label class="block text-sm font-medium mb-2">Search</label>
+                <input type="text" id="searchFilter" placeholder="Search devices..." 
+                       class="w-full p-2 border border-border rounded bg-surface text-foreground">
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Grid -->
+    <div id="deviceGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Device cards will be populated here -->
+    </div>
+
+    <!-- Device Details Modal -->
+    <div id="deviceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="card p-6 max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold" id="modalDeviceName">Device Details</h2>
+                <button onclick="closeDeviceModal()" class="text-muted-foreground hover:text-foreground">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            <div id="modalDeviceContent">
+                <!-- Device details will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allDevices = [];
+
+async function loadDevices() {
+    try {
+        const response = await fetch('/api/network-devices');
+        allDevices = await response.json();
+        displayDevices(allDevices);
+    } catch (error) {
+        console.error('Error loading devices:', error);
+    }
+}
+
+function displayDevices(devices) {
+    const grid = document.getElementById('deviceGrid');
+    
+    if (devices.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-full text-center py-12">
+                <i data-lucide="server" class="h-16 w-16 mx-auto text-muted-foreground mb-4"></i>
+                <h3 class="text-lg font-medium mb-2">No devices found</h3>
+                <p class="text-muted-foreground mb-4">Scan the network to discover devices</p>
+                <button class="btn btn-primary" onclick="scanDevices()">
+                    <i data-lucide="search" class="mr-2"></i>
+                    Scan Network
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = devices.map(device => `
+        <div class="card p-4 cursor-pointer hover:bg-accent transition-colors" onclick="showDeviceDetails('${device.id}')">
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center">
+                    <i data-lucide="${getDeviceIcon(device.type)}" class="h-8 w-8 text-primary mr-3"></i>
+                    <div>
+                        <h3 class="font-medium">${device.name}</h3>
+                        <p class="text-sm text-muted-foreground">${device.type}</p>
+                    </div>
+                </div>
+                <span class="badge ${getStatusClass(device.status)}">${device.status}</span>
+            </div>
+            
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">IP Address:</span>
+                    <span>${device.ipAddress}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">MAC Address:</span>
+                    <span class="font-mono text-xs">${device.macAddress || 'Unknown'}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">Last Seen:</span>
+                    <span>${formatTime(device.lastSeen)}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    lucide.createIcons();
+}
+
+function getDeviceIcon(type) {
+    const icons = {
+        'router': 'router',
+        'switch': 'network',
+        'access_point': 'wifi',
+        'server': 'server',
+        'raspberry_pi': 'cpu',
+        'workstation': 'monitor',
+        'printer': 'printer',
+        'other': 'box'
+    };
+    return icons[type] || 'box';
+}
+
+function getStatusClass(status) {
+    switch (status.toLowerCase()) {
+        case 'online': return 'badge-success';
+        case 'offline': return 'badge-destructive';
+        case 'warning': return 'badge-warning';
+        default: return '';
+    }
+}
+
+function formatTime(timestamp) {
+    if (!timestamp) return 'Never';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+    return Math.floor(diff / 86400000) + 'd ago';
+}
+
+async function scanDevices() {
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i data-lucide="loader-2" class="mr-2 animate-spin"></i>Scanning...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch('/api/network-devices/scan', { method: 'POST' });
+        const result = await response.json();
+        
+        // Reload devices after scan
+        setTimeout(() => {
+            loadDevices();
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Error scanning devices:', error);
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
+        lucide.createIcons();
+    }
+}
+
+function filterDevices() {
+    const typeFilter = document.getElementById('deviceTypeFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+    
+    const filtered = allDevices.filter(device => {
+        const matchesType = !typeFilter || device.type === typeFilter;
+        const matchesStatus = !statusFilter || device.status.toLowerCase() === statusFilter;
+        const matchesSearch = !searchFilter || 
+            device.name.toLowerCase().includes(searchFilter) ||
+            device.ipAddress.includes(searchFilter) ||
+            (device.macAddress && device.macAddress.toLowerCase().includes(searchFilter));
+        
+        return matchesType && matchesStatus && matchesSearch;
+    });
+    
+    displayDevices(filtered);
+}
+
+function showDeviceDetails(deviceId) {
+    const device = allDevices.find(d => d.id === deviceId);
+    if (!device) return;
+    
+    document.getElementById('modalDeviceName').textContent = device.name;
+    document.getElementById('modalDeviceContent').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h3 class="font-medium mb-3">Device Information</h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-muted-foreground">Type:</span>
+                        <span>${device.type}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-muted-foreground">Status:</span>
+                        <span class="badge ${getStatusClass(device.status)}">${device.status}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-muted-foreground">IP Address:</span>
+                        <span>${device.ipAddress}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-muted-foreground">MAC Address:</span>
+                        <span class="font-mono">${device.macAddress || 'Unknown'}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-muted-foreground">Location:</span>
+                        <span>${device.location || 'Not set'}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <h3 class="font-medium mb-3">Actions</h3>
+                <div class="space-y-2">
+                    <button class="btn btn-outline w-full" onclick="pingDevice('${device.ipAddress}')">
+                        <i data-lucide="wifi" class="mr-2"></i>
+                        Ping Device
+                    </button>
+                    <button class="btn btn-outline w-full" onclick="editDevice('${device.id}')">
+                        <i data-lucide="edit" class="mr-2"></i>
+                        Edit Device
+                    </button>
+                    <button class="btn btn-outline w-full" onclick="removeDevice('${device.id}')">
+                        <i data-lucide="trash-2" class="mr-2"></i>
+                        Remove Device
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('deviceModal').classList.remove('hidden');
+    document.getElementById('deviceModal').classList.add('flex');
+    lucide.createIcons();
+}
+
+function closeDeviceModal() {
+    document.getElementById('deviceModal').classList.add('hidden');
+    document.getElementById('deviceModal').classList.remove('flex');
+}
+
+async function pingDevice(ipAddress) {
+    try {
+        const response = await fetch('/api/network-tools/ping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target: ipAddress, count: 4 })
+        });
+        const result = await response.json();
+        
+        alert(`Ping ${result.target}: ${result.success ? 'Success' : 'Failed'}${result.latency ? ` (${result.latency}ms)` : ''}`);
+    } catch (error) {
+        alert('Ping failed');
+    }
+}
+
+function editDevice(deviceId) {
+    alert('Edit device functionality coming soon!');
+}
+
+function removeDevice(deviceId) {
+    if (confirm('Are you sure you want to remove this device?')) {
+        alert('Remove device functionality coming soon!');
+    }
+}
+
+// Event listeners
+document.getElementById('deviceTypeFilter').addEventListener('change', filterDevices);
+document.getElementById('statusFilter').addEventListener('change', filterDevices);
+document.getElementById('searchFilter').addEventListener('input', filterDevices);
+
+// Load devices on page load
+loadDevices();
+
+// Auto-refresh every 30 seconds
+setInterval(loadDevices, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetMonitor Pro - Network Management Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1976D2',
+                        secondary: '#424242',
+                        success: '#388E3C',
+                        warning: '#F57C00',
+                        error: '#D32F2F',
+                        surface: '#FFFFFF',
+                        background: '#FAFAFA'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                        'mono': ['Courier New', 'monospace']
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-background font-sans">
+    <!-- @COMPONENT: MainLayout -->
+    <div class="flex h-screen">
+        <!-- @COMPONENT: Sidebar -->
+        <aside class="w-64 bg-surface shadow-lg border-r border-gray-200 flex-shrink-0">
+            <div class="p-6 border-b border-gray-200">
+                <h1 class="text-xl font-bold text-gray-900 flex items-center">
+                    <i class="fas fa-network-wired text-primary mr-3"></i>
+                    NetMonitor Pro
+                </h1>
+            </div>
+            
+            <nav class="p-4 space-y-2">
+                <a href="#dashboard" class="flex items-center px-4 py-3 text-sm font-medium text-white bg-primary rounded-lg">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    Dashboard
+                </a>
+                <a href="#devices" class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="fas fa-server mr-3"></i>
+                    Network Devices
+                </a>
+                <a href="#topology" class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="fas fa-sitemap mr-3"></i>
+                    Network Topology
+                </a>
+                <a href="#statistics" class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="fas fa-chart-line mr-3"></i>
+                    Statistics & Analytics
+                </a>
+                <a href="#tools" class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="fas fa-tools mr-3"></i>
+                    Network Tools
+                </a>
+                <a href="#alerts" class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="fas fa-bell mr-3"></i>
+                    Alerts & Monitoring
+                    <span class="ml-auto bg-error text-white text-xs px-2 py-1 rounded-full">3</span>
+                </a>
+                <a href="#raspberry-pi" class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="fab fa-raspberry-pi mr-3"></i>
+                    Raspberry Pi Setup
+                </a>
+                <a href="#reports" class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="fas fa-file-export mr-3"></i>
+                    Export Reports
+                </a>
+            </nav>
+        </aside>
+        <!-- @END_COMPONENT: Sidebar -->
+
+        <!-- @COMPONENT: MainContent -->
+        <main class="flex-1 overflow-auto">
+            <!-- @COMPONENT: Header -->
+            <header class="bg-surface shadow-sm border-b border-gray-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Network Dashboard</h2>
+                        <p class="text-sm text-gray-600">Real-time network monitoring and management</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2 text-sm">
+                            <div class="w-3 h-3 bg-success rounded-full"></div>
+                            <span class="text-gray-700">Network Status: <span class="font-medium text-success">Healthy</span></span>
+                        </div>
+                        <button class="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+            <!-- @END_COMPONENT: Header -->
+
+            <div class="p-6 space-y-6">
+                <!-- @COMPONENT: StatsOverview -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-surface rounded-xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Total Devices</p>
+                                <p class="text-3xl font-bold text-gray-900" data-bind="stats.totalDevices">24</p>
+                            </div>
+                            <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                                <i class="fas fa-server text-primary text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm">
+                            <span class="text-success flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i>
+                                22 Online
+                            </span>
+                            <span class="text-error ml-4 flex items-center">
+                                <i class="fas fa-arrow-down mr-1"></i>
+                                2 Offline
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="bg-surface rounded-xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Network Utilization</p>
+                                <p class="text-3xl font-bold text-gray-900" data-bind="stats.utilization">73%</p>
+                            </div>
+                            <div class="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
+                                <i class="fas fa-chart-line text-warning text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="bg-gray-200 rounded-full h-2">
+                                <div class="bg-warning h-2 rounded-full" style="width: 73%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-surface rounded-xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Average Latency</p>
+                                <p class="text-3xl font-bold text-gray-900" data-bind="stats.latency">12ms</p>
+                            </div>
+                            <div class="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
+                                <i class="fas fa-stopwatch text-success text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-sm text-success">
+                            <i class="fas fa-arrow-down mr-1"></i>
+                            5ms improvement
+                        </div>
+                    </div>
+
+                    <div class="bg-surface rounded-xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Active Alerts</p>
+                                <p class="text-3xl font-bold text-gray-900" data-bind="stats.alerts">3</p>
+                            </div>
+                            <div class="w-12 h-12 bg-error/10 rounded-full flex items-center justify-center">
+                                <i class="fas fa-exclamation-triangle text-error text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-sm text-error">
+                            <i class="fas fa-arrow-up mr-1"></i>
+                            2 Critical, 1 Warning
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: StatsOverview -->
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- @COMPONENT: NetworkTrafficChart -->
+                    <div class="bg-surface rounded-xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900">Network Traffic</h3>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 text-xs bg-primary text-white rounded-lg">Live</button>
+                                <button class="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded-lg">1H</button>
+                                <button class="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded-lg">24H</button>
+                            </div>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="trafficChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: NetworkTrafficChart -->
+
+                    <!-- @COMPONENT: DeviceStatusChart -->
+                    <div class="bg-surface rounded-xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900">Device Status Distribution</h3>
+                            <button class="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="deviceChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: DeviceStatusChart -->
+                </div>
+
+                <!-- @COMPONENT: DeviceList -->
+                <div class="bg-surface rounded-xl shadow-sm border border-gray-200">
+                    <div class="p-6 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-900">Network Devices</h3>
+                            <div class="flex space-x-3">
+                                <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    Add Device
+                                </button>
+                                <button class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <i class="fas fa-sync mr-2"></i>
+                                    Scan Network
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex space-x-4">
+                            <div class="relative">
+                                <input type="text" placeholder="Search devices..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                            </div>
+                            <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option>All Status</option>
+                                <option>Online</option>
+                                <option>Offline</option>
+                                <option>Warning</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latency</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uptime</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <!-- @MAP: devices.map(device => ( -->
+                                <tr class="hover:bg-gray-50" data-mock="true">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-router text-primary"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900" data-bind="device.name">Main Router</div>
+                                                <div class="text-sm text-gray-500" data-bind="device.type">Cisco ISR 4331</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900" data-bind="device.ip">192.168.1.1</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
+                                            <div class="w-2 h-2 bg-success rounded-full mr-2"></div>
+                                            Online
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-bind="device.latency">8ms</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-bind="device.uptime">99.8%</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div class="flex space-x-2">
+                                            <button class="text-primary hover:text-blue-700" data-event="click:pingDevice">
+                                                <i class="fas fa-satellite-dish"></i>
+                                            </button>
+                                            <button class="text-gray-600 hover:text-gray-800">
+                                                <i class="fas fa-info-circle"></i>
+                                            </button>
+                                            <button class="text-gray-600 hover:text-gray-800">
+                                                <i class="fas fa-cog"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="hover:bg-gray-50" data-mock="true">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 bg-warning/10 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-wifi text-warning"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">WiFi Access Point</div>
+                                                <div class="text-sm text-gray-500">Ubiquiti UniFi AP</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">192.168.1.10</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning">
+                                            <div class="w-2 h-2 bg-warning rounded-full mr-2"></div>
+                                            High Load
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">15ms</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">97.2%</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div class="flex space-x-2">
+                                            <button class="text-primary hover:text-blue-700">
+                                                <i class="fas fa-satellite-dish"></i>
+                                            </button>
+                                            <button class="text-gray-600 hover:text-gray-800">
+                                                <i class="fas fa-info-circle"></i>
+                                            </button>
+                                            <button class="text-gray-600 hover:text-gray-800">
+                                                <i class="fas fa-cog"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="hover:bg-gray-50" data-mock="true">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 bg-error/10 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-server text-error"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">File Server</div>
+                                                <div class="text-sm text-gray-500">Dell PowerEdge</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">192.168.1.100</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/10 text-error">
+                                            <div class="w-2 h-2 bg-error rounded-full mr-2"></div>
+                                            Offline
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">--</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">85.1%</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div class="flex space-x-2">
+                                            <button class="text-gray-400 cursor-not-allowed">
+                                                <i class="fas fa-satellite-dish"></i>
+                                            </button>
+                                            <button class="text-gray-600 hover:text-gray-800">
+                                                <i class="fas fa-info-circle"></i>
+                                            </button>
+                                            <button class="text-gray-600 hover:text-gray-800">
+                                                <i class="fas fa-cog"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- @END_MAP )) -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: DeviceList -->
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- @COMPONENT: NetworkTools -->
+                    <div class="bg-surface rounded-xl p-6 shadow-sm border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-6">Network Tools</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="flex space-x-4">
+                                <input type="text" placeholder="Enter IP address or hostname" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" value="192.168.1.1">
+                                <button class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors" data-event="click:executePing">
+                                    <i class="fas fa-satellite-dish mr-2"></i>
+                                    Ping
+                                </button>
+                            </div>
+                            
+                            <div class="flex space-x-4">
+                                <button class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <i class="fas fa-route mr-2"></i>
+                                    Traceroute
+                                </button>
+                                <button class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <i class="fas fa-search mr-2"></i>
+                                    Port Scan
+                                </button>
+                            </div>
+                            
+                            <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm h-40 overflow-y-auto">
+                                <div class="whitespace-pre-wrap" data-mock="true">
+PING 192.168.1.1 (192.168.1.1): 56 data bytes
+64 bytes from 192.168.1.1: icmp_seq=0 ttl=64 time=8.234 ms
+64 bytes from 192.168.1.1: icmp_seq=1 ttl=64 time=7.891 ms
+64 bytes from 192.168.1.1: icmp_seq=2 ttl=64 time=8.123 ms
+64 bytes from 192.168.1.1: icmp_seq=3 ttl=64 time=8.456 ms
+
+--- 192.168.1.1 ping statistics ---
+4 packets transmitted, 4 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 7.891/8.176/8.456/0.231 ms
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: NetworkTools -->
+
+                    <!-- @COMPONENT: RaspberryPiSetup -->
+                    <div class="bg-surface rounded-xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <i class="fab fa-raspberry-pi text-red-600 mr-3"></i>
+                                Raspberry Pi Setup
+                            </h3>
+                            <span class="px-3 py-1 bg-success/10 text-success text-sm rounded-full">Connected</span>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <h4 class="font-medium text-blue-900 mb-2">Installation Script</h4>
+                                <p class="text-sm text-blue-700 mb-3">Run this command on your Raspberry Pi to install the monitoring agent:</p>
+                                <div class="bg-gray-900 text-green-400 p-3 rounded font-mono text-sm">
+                                    <code data-mock="true">curl -sSL https://netmonitor.local/install.sh | bash</code>
+                                    <button class="float-right text-gray-400 hover:text-white" data-event="click:copyScript">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-success">3</div>
+                                    <div class="text-sm text-gray-600">Active Pi Nodes</div>
+                                </div>
+                                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-primary">98%</div>
+                                    <div class="text-sm text-gray-600">Avg Uptime</div>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 bg-success rounded-full mr-3"></div>
+                                        <span class="text-sm font-medium">pi-monitor-01</span>
+                                    </div>
+                                    <span class="text-sm text-gray-500">192.168.1.201</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 bg-success rounded-full mr-3"></div>
+                                        <span class="text-sm font-medium">pi-monitor-02</span>
+                                    </div>
+                                    <span class="text-sm text-gray-500">192.168.1.202</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 bg-warning rounded-full mr-3"></div>
+                                        <span class="text-sm font-medium">pi-monitor-03</span>
+                                    </div>
+                                    <span class="text-sm text-gray-500">192.168.1.203</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: RaspberryPiSetup -->
+                </div>
+
+                <!-- @COMPONENT: AlertsSection -->
+                <div class="bg-surface rounded-xl p-6 shadow-sm border border-gray-200">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900">Recent Alerts & Events</h3>
+                        <button class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                            View All Alerts
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start p-4 border border-red-200 bg-red-50 rounded-lg" data-mock="true">
+                            <div class="w-8 h-8 bg-error rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                                <i class="fas fa-exclamation-triangle text-white text-sm"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-medium text-error">Device Offline</h4>
+                                    <span class="text-sm text-gray-500">2 minutes ago</span>
+                                </div>
+                                <p class="text-sm text-gray-700 mt-1">File Server (192.168.1.100) is not responding to ping requests.</p>
+                                <div class="mt-2 flex space-x-2">
+                                    <button class="text-sm text-error hover:text-red-700">Investigate</button>
+                                    <button class="text-sm text-gray-600 hover:text-gray-800">Dismiss</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start p-4 border border-orange-200 bg-orange-50 rounded-lg" data-mock="true">
+                            <div class="w-8 h-8 bg-warning rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                                <i class="fas fa-exclamation-circle text-white text-sm"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-medium text-warning">High Bandwidth Usage</h4>
+                                    <span class="text-sm text-gray-500">15 minutes ago</span>
+                                </div>
+                                <p class="text-sm text-gray-700 mt-1">Network utilization has exceeded 80% threshold on main interface.</p>
+                                <div class="mt-2 flex space-x-2">
+                                    <button class="text-sm text-warning hover:text-orange-700">View Details</button>
+                                    <button class="text-sm text-gray-600 hover:text-gray-800">Acknowledge</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start p-4 border border-green-200 bg-green-50 rounded-lg" data-mock="true">
+                            <div class="w-8 h-8 bg-success rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                                <i class="fas fa-check-circle text-white text-sm"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-medium text-success">Device Recovered</h4>
+                                    <span class="text-sm text-gray-500">1 hour ago</span>
+                                </div>
+                                <p class="text-sm text-gray-700 mt-1">WiFi Access Point (192.168.1.10) has returned to normal operation.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: AlertsSection -->
+            </div>
+        </main>
+        <!-- @END_COMPONENT: MainContent -->
+    </div>
+    <!-- @END_COMPONENT: MainLayout -->
+
+    <!-- @COMPONENT: LoadingOverlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-surface rounded-xl p-8 shadow-lg flex items-center space-x-4">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span class="text-gray-900 font-medium">Processing network operation...</span>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: LoadingOverlay -->
+
+    <script>
+        (function() {
+            // Initialize charts
+            // @FUNCTIONALITY: Real-time network traffic monitoring with Chart.js
+            const trafficCtx = document.getElementById('trafficChart').getContext('2d');
+            const trafficChart = new Chart(trafficCtx, {
+                type: 'line',
+                data: {
+                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+                    datasets: [{
+                        label: 'Upload (Mbps)',
+                        data: [12, 19, 3, 17, 28, 24, 15],
+                        borderColor: '#1976D2',
+                        backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Download (Mbps)',
+                        data: [65, 59, 80, 81, 56, 78, 85],
+                        borderColor: '#388E3C',
+                        backgroundColor: 'rgba(56, 142, 60, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Bandwidth (Mbps)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            const deviceCtx = document.getElementById('deviceChart').getContext('2d');
+            const deviceChart = new Chart(deviceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Online', 'Warning', 'Offline'],
+                    datasets: [{
+                        data: [22, 1, 2],
+                        backgroundColor: ['#388E3C', '#F57C00', '#D32F2F'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Mock real-time data updates
+            // TODO: Replace with actual WebSocket or Server-Sent Events implementation
+            function updateCharts() {
+                // Update traffic chart with new data points
+                const now = new Date();
+                const timeLabel = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                if (trafficChart.data.labels.length >= 20) {
+                    trafficChart.data.labels.shift();
+                    trafficChart.data.datasets[0].data.shift();
+                    trafficChart.data.datasets[1].data.shift();
+                }
+                
+                trafficChart.data.labels.push(timeLabel);
+                trafficChart.data.datasets[0].data.push(Math.floor(Math.random() * 30) + 10);
+                trafficChart.data.datasets[1].data.push(Math.floor(Math.random() * 40) + 60);
+                trafficChart.update('none');
+            }
+
+            // Update charts every 5 seconds for demo purposes
+            setInterval(updateCharts, 5000);
+
+            // Network tool functionality
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('[data-event="click:executePing"]')) {
+                    // TODO: Implement actual ping functionality
+                    const overlay = document.getElementById('loadingOverlay');
+                    overlay.classList.remove('hidden');
+                    
+                    setTimeout(() => {
+                        overlay.classList.add('hidden');
+                        // Mock ping results would be displayed here
+                    }, 2000);
+                }
+                
+                if (e.target.closest('[data-event="click:copyScript"]')) {
+                    const script = 'curl -sSL https://netmonitor.local/install.sh | bash';
+                    navigator.clipboard.writeText(script).then(() => {
+                        // TODO: Show toast notification
+                        console.log('Script copied to clipboard');
+                    });
+                }
+            });
+
+            // Auto-refresh network statistics
+            // TODO: Implement actual API calls for real data
+            function refreshStats() {
+                // Mock data updates
+                const elements = document.querySelectorAll('[data-bind]');
+                elements.forEach(el => {
+                    const binding = el.getAttribute('data-bind');
+                    switch(binding) {
+                        case 'stats.utilization':
+                            el.textContent = Math.floor(Math.random() * 30) + 60 + '%';
+                            break;
+                        case 'stats.latency':
+                            el.textContent = Math.floor(Math.random() * 10) + 8 + 'ms';
+                            break;
+                        case 'stats.alerts':
+                            el.textContent = Math.floor(Math.random() * 5) + 1;
+                            break;
+                    }
+                });
+            }
+
+            // Refresh stats every 10 seconds
+            setInterval(refreshStats, 10000);
+
+            // Initialize tooltips and responsive behavior
+            // TODO: Implement proper responsive navigation collapse
+            console.log('NetMonitor Pro Dashboard initialized');
+        })();
+    </script>
+</body>
+</html>

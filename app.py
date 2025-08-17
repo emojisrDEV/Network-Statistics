@@ -415,6 +415,36 @@ def raspberry_pi_setup():
     """Raspberry Pi setup page"""
     return render_template('raspberry_pi.html')
 
+@app.route('/devices')
+def devices():
+    """Network devices page"""
+    return render_template('devices.html')
+
+@app.route('/topology')
+def topology():
+    """Network topology page"""
+    return render_template('topology.html')
+
+@app.route('/statistics')
+def statistics():
+    """Statistics and analytics page"""
+    return render_template('statistics.html')
+
+@app.route('/tools')
+def tools():
+    """Network tools page"""
+    return render_template('tools.html')
+
+@app.route('/alerts')
+def alerts():
+    """Alerts and monitoring page"""
+    return render_template('alerts.html')
+
+@app.route('/reports')
+def reports():
+    """Export reports page"""
+    return render_template('reports.html')
+
 @app.route('/api/raspberry-pi', methods=['GET', 'POST'])
 def raspberry_pi_nodes():
     """Get or add Raspberry Pi nodes"""
